@@ -1,0 +1,134 @@
+# ignore everything
+*
+!*/
+
+# allow core repo files
+!.gitignore
+!README.md
+!LICENSE
+
+# allow documentation
+!docs/**
+!docs/**/*.md
+
+# allow configuration
+!config/**
+!config/**/*.yml
+!config/**/*.yaml
+!config/**/*.env
+!config/**/*.example
+!config/**/*.md
+
+# allow metadata
+!metadata/**
+!metadata/**/*.tsv
+!metadata/**/*.csv
+!metadata/**/*.txt
+!metadata/**/*.md
+
+# allow workflow scripts
+!workflow/**
+!workflow/**/*.sh
+!workflow/**/*.py
+!workflow/**/*.R
+
+# allow analysis scripts
+!analysis/**
+!analysis/**/*.R
+!analysis/**/*.Rmd
+!analysis/**/*.py
+!analysis/**/*.ipynb
+
+# allow helper scripts
+!scripts/**
+!scripts/**/*.sh
+!scripts/**/*.py
+!scripts/**/*.R
+
+# allow reference documentation only
+!reference/
+!reference/**/*.md
+!reference/**/README.md
+!reference/**/checksums*.txt
+!reference/**/checksums*.tsv
+!reference/**/checksums*.csv
+
+# ignore data folders
+data/**
+reference/genome/**
+reference/star_index/**
+archive/**
+
+# ignore results and assets
+results/**
+assets/**
+
+# ignore sequencing files
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+
+# ignore alignment files
+*.bam
+*.sam
+*.cram
+*.bai
+*.crai
+
+# ignore reference genome files
+*.fa
+*.fasta
+*.fna
+*.gtf
+*.gff
+*.gff3
+*.bed
+*.vcf
+*.vcf.gz
+
+# ignore index files
+*.fai
+*.dict
+*.tbi
+*.csi
+*.gzi
+*.amb
+*.ann
+*.bwt
+*.pac
+*.sa
+*.bt2
+*.ht2
+*.mmi
+*.min
+
+# ignore large analysis objects
+*.RData
+*.rds
+*.rda
+
+# ignore compressed archives
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# ignore alignment logs
+*.Log.out
+*.Log.final.out
+*.Log.progress.out
+*.SJ.out.tab
+
+# ignore system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ignore environments and caches
+.env
+.venv/
+venv/
+__pycache__/
+.ipynb_checkpoints/
