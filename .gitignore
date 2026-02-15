@@ -45,10 +45,19 @@
 !scripts/**/*.py
 !scripts/**/*.R
 
-# allow reference documentation only
-!reference/
+# ignore large reference genome files
+reference/genome/*
+reference/star_index/*
+
+# allow directories
+!reference/genome/
+!reference/star_index/
+
+# allow documentation
 !reference/**/*.md
 !reference/**/README.md
+
+# allow checksum files
 !reference/**/checksums*.txt
 !reference/**/checksums*.tsv
 !reference/**/checksums*.csv
