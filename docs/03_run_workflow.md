@@ -1,4 +1,4 @@
-## Step 3 — Run the RNA-seq Workflow
+## Run the RNA-seq Workflow
 
 This section explains how to run the RNA-seq processing workflow, from quality control through alignment and gene counting.
 
@@ -8,11 +8,12 @@ The workflow is organized under the `workflow/` directory and uses a shared conf
 
 The workflow consists of three main steps:
 
-| Step | Script                         | Purpose                                   |
-|------|---------------------------------|-------------------------------------------|
-| 01   | `01_qc_fastqc_multiqc.sh`     | Quality control of FASTQ files           |
-| 02   | `02_align_star.sh`            | Align reads to the genome using STAR     |
-| 03   | `03_count_featurecounts.sh`   | Generate gene-level count matrix         |
+| Step | Script                         | Purpose                                              |
+|------|---------------------------------|------------------------------------------------------|
+| 01   | `01_qc_fastqc_multiqc.sh`     | Quality control of FASTQ files                      |
+| 02   | `02_align_star.sh`            | Align reads to the genome using STAR                |
+| 03   | `03_qc_postalign.sh`         | Quality control of aligned BAM files                |
+| 04   | `04_count_featurecounts.sh`  | Generate gene-level count matrix                    |
 
 ## Shared Configuration
 
@@ -30,7 +31,8 @@ workflow/
 ├── 00_config.sh
 ├── 01_qc_fastqc_multiqc.sh
 ├── 02_align_star.sh
-└── 03_count_featurecounts.sh
+├── 03_qc_postalign.sh
+└── 04_count_featurecounts.sh
 
 ## Step 0 — Configuration (`00_config.sh`)
 
@@ -107,15 +109,19 @@ results/logs/01_qc_fastqc_multiqc.log
 results/qc/multiqc/multiqc_report.html
 
 Open this file in a web browser to inspect sequencing data quality.
+```
 
 ---
 
-## Step 3 — Align Reads Using STAR
+## Align Reads Using STAR
 
 **Script:**
 
 ```text
 workflow/02_align_star.sh
+
+This script performs read alignment using STAR and organizes outputs into the standardized pipeline structure.
+
 
 This step:
 
@@ -126,22 +132,65 @@ metadata/samples.tsv
 
 + Aligns paired FASTQ files using STAR
 + Produces coordinate-sorted BAM files
++ Generates STAR alignment logs and splice junction information
++ Organizes outputs into dedicated folders for BAM files and logs
++ Writes a complete execution log for reproducibility
 
 **Run:**
+
+```
 
 ```sh
 bash workflow/02_align_star.sh
 ```
 
 **Output:**
+This step produces three categories of outputs:
+
+1. Aligned BAM files
 
 ```text
 results/align/bam/*.bam
+
+These are the primary alignment outputs used for downstream analysis (featureCounts, QC, visualization, etc.).
+
+Each BAM file is coordinate-sorted and ready for downstream processing.
+
+---
+
+2. STAR alignment logs and intermediate files
+```text
 results/align/star_logs/
+
+This directory contains STAR alignment diagnostics and splice junction information:
+```text
+results/align/star_logs/
+├── MouseID_Group_TimePoint_Log.final.out
+├── MouseID_Group_TimePoint_Log.out
+├── MouseID_Group_TimePoint_Log.progress.out
+└── MouseID_Group_TimePoint_SJ.out.tab
+
+Description of important files:
+| File             | Purpose                                               | Required later |
+|------------------|--------------------------------------------------------|----------------|
+| Log.final.out    | Alignment summary (% mapped, reads, mismatch rate)   |  YES         |
+| Log.out          | Full STAR execution log                              | Optional       |
+| Log.progress.out | Runtime progress information                         | No             |
+| SJ.out.tab       | Detected splice junctions                            | Optional       |
+
+> **Log.final.out** is the primary alignment QC file and should always be preserved.
+
+---
+3. Pipeline execution log
+```text
 results/logs/02_align_star.log
 
-Each BAM file is named using the following format:
+This file contains the full record of the pipeline execution, including commands run and any warnings or errors.
 
+---
+**BAM file naming convention**
+
+Each BAM file follows this format:
 ```text
 MouseID_Group_TimePoint_Aligned.out.bam
 
@@ -151,19 +200,122 @@ This naming convention preserves key experimental information:
 + TimePoint — sampling time point
 + Aligned.out.bam — indicates STAR-aligned, coordinate-sorted BAM file
 
+---
 Example:
 
 ```text
-527297-2_Sham_3hPost-Reperfusion_Aligned.out.bam
+results/align/bam/
+└── 527297-2_Sham_3hPost-Reperfusion_Aligned.out.bam
+
+Corresponding STAR logs:
+```text
+results/align/star_logs/
+├── 527297-2_Sham_3hPost-Reperfusion_Log.final.out
+├── 527297-2_Sham_3hPost-Reperfusion_Log.out
+├── 527297-2_Sham_3hPost-Reperfusion_Log.progress.out
+└── 527297-2_Sham_3hPost-Reperfusion_SJ.out.tab
+
+---
+**Directory structure after this step**
+```text
+results/
+├── align/
+│   ├── bam/
+│   │   └── *.bam
+│   └── star_logs/
+│       ├── *_Log.final.out
+│       ├── *_Log.out
+│       ├── *_Log.progress.out
+│       └── *_SJ.out.tab
+└── logs/
+    └── 02_align_star.log
+```
 
 ---
 
-## Step 4 — Generate Gene Count Matrix
+## Post-Alignment Quality Control
 
 **Script:**
 
 ```text
-workflow/03_count_featurecounts.sh
+workflow/03_qc_postalign.sh
+
+Purpose
+
+This step summarizes STAR alignment quality metrics for all samples using the STAR output log files.
+
+It extracts key alignment statistics from:
+```text
+results/align/star_logs/*Log.final.out
+
+and compiles them into a single tab-separated summary file for easy inspection and downstream reporting.
+
+This allows you to quickly verify alignment success and identify problematic samples.
+
+This step performs the following:
+
+Reads all STAR alignment log files:
+```text
+results/align/star_logs/*Log.final.out
+
+**Extracts the following metrics for each sample:**
++ Number of input reads
++ Number of uniquely mapped reads
++ Percentage of uniquely mapped reads
++ Percentage of multi-mapped reads
++ Percentage of unmapped reads
+> Compiles all metrics into a single summary table.
+
+**Run:**
+
+```sh
+bash workflow/03_qc_postalign_star.sh
+```
+
+**Output:**
+
+Alignment summary table:
+
+```text
+results/qc/postalign/star_alignment_summary.tsv
+
+---
+
+```sh
+multiqc results/align/star_logs -o results/qc/postalign
+```
+
+Produces:
+
+```text
+results/qc/postalign/multiqc_report.html
+
+Pipeline execution log:
+```text
+results/logs/03_qc_postalign_star.log
+
+This step verifies that:
+
++ STAR alignment completed successfully
++ Mapping rates are within expected ranges
++ No samples have unusually low mapping rates
++ All samples are suitable for gene counting
+
+Samples with low uniquely mapped percentages may indicate:
++ Poor sequencing quality
++ Contamination
++ Reference genome mismatch
++ Library preparation issues
+
+These should be investigated before proceeding.
+
+---
+## Generate Gene Count Matrix
+
+**Script:**
+
+```text
+workflow/04_count_featurecounts.sh
 
 This step:
 + Reads all BAM files
@@ -173,14 +325,13 @@ This step:
 **Run:**
 
 ```sh
-bash workflow/03_count_featurecounts.sh
-```
+bash workflow/04_count_featurecounts.sh
 
 **Output:**
 
 ```text
 results/counts/gene_counts.tsv
-results/logs/03_count_featurecounts.log
+results/logs/04_count_featurecounts.log
 
 **This file is the primary input for downstream differential expression analysis.**
 
@@ -193,8 +344,8 @@ Run the workflow scripts in the following order:
 ```sh
 bash workflow/01_qc_fastqc_multiqc.sh
 bash workflow/02_align_star.sh
-bash workflow/03_count_featurecounts.sh
-```
+bash workflow/03_qc_postalign.sh
+bash workflow/04_count_featurecounts.sh
 
 **This sequence performs quality control, read alignment, and gene count generation.**
 
@@ -242,10 +393,10 @@ This allows you to adjust CPU usage depending on available system resources.
 
 The following tools must be installed before running the RNA-seq workflow:
 
-- FastQC  
-- MultiQC  
-- STAR  
-- featureCounts (part of the Subread package)  
+- FastQC
+- MultiQC
+- STAR
+- featureCounts (part of the Subread package)
 
 ---
 
@@ -270,7 +421,6 @@ sudo apt install -y star
 # Install featureCounts (Subread package)
 sudo apt install -y subread
 
-### Option 2 — Conda (Recommended for reproducibility)
 Conda provides isolated environments and ensures reproducible software versions.
 
 If Conda is not installed, first follow the Conda installation guide:
@@ -287,6 +437,7 @@ conda install -c bioconda -c conda-forge fastqc multiqc star subread -y
 ```
 
 ## Verify Installation
+
 Run the following commands:
 
 ```sh
