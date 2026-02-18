@@ -1,4 +1,5 @@
 ### Input Data Layout
+
 #### Overview
 
 The pipeline expects all sequencing input files to be organized under the input_data/ directory.
@@ -11,26 +12,79 @@ input_data/
 └── md5/
 ```
 
-`raw_fastq/`
+These paths correspond to variables defined in:
 
-Purpose:
+```text
+workflow/00_config.sh
+
+- `RAW_FASTQ_DIR` = input_data/raw_fastq
+- `FASTQ_DIR` = input_data/processed_fastq
+- `MD5_DIR` = input_data/md5
+
+---
+
+## raw_fastq/
+
+### Purpose
+
 Stores original sequencing files exactly as delivered by the sequencing facility.
 
-- Original filenames preserved
-- Contains run metadata, barcode indices, lane information
-- Large compressed FASTQ files (.fastq.gz)
-- MD5 checksum files may exist alongside FASTQs
+Characteristics:
+
+- Original filenames preserved exactly
+- Contains instrument run metadata, barcode indices, and lane information
+- Large compressed sequencing files (`.fastq.gz`)
+- May include checksum files alongside FASTQs
 
 Example:
 
-```sh
-NS.LH00487_0037.005.NEBNext_dual_i7_100---NEBNext_dual_i5_100.Box1_A4_R1.fastq.gz
-NS.LH00487_0037.005.NEBNext_dual_i7_100---NEBNext_dual_i5_100.Box1_A4_R2.fastq.gz
-```
+_NS.LH00487_0037.005.NEBNext_dual_i7_100---NEBNext_dual_i5_100.Box1_A4_R1.fastq.gz_
+_NS.LH00487_0037.005.NEBNext_dual_i7_100---NEBNext_dual_i5_100.Box1_A4_R2.fastq.gz_
 
-Notes
-+ These files are considered immutable reference copies.
-+ Pipeline scripts do not directly use this folder for alignment.
+
+### Notes
+
+- These files are considered immutable reference copies.
+- Never rename, modify, or delete files in this directory.
+- Pipeline scripts do not directly use this directory.
+- This directory serves as the permanent archive of sequencing delivery.
+
+---
+
+## Converting raw_fastq → processed_fastq
+
+### Purpose
+
+Create standardized FASTQ filenames suitable for pipeline workflows while preserving original files unchanged.
+
+Sequencing facilities generate filenames containing run identifiers and barcode metadata. The pipeline requires simplified filenames based on biological sample position.
+
+Example transformation:
+
+_NS.LH00487_0037.005.NEBNext_dual_i7_100---NEBNext_dual_i5_100.Box1_A4_R1.fastq.gz_
+→
+_Box1_A4_R1.fastq.gz_
+
+The standardized files are stored in:
+```text
+input_data/processed_fastq/
+
+
+---
+
+### Script used
+
+Renaming is performed using:
+```text
+workflow/00_rename_fastq.sh
+
+This script:
+
+- Reads files from `$RAW_FASTQ_DIR`
+- Extracts the BoxPosition identifier
+- Copies files into `$FASTQ_DIR`
+- Preserves raw files unchanged
+- Ensures compatibility with downstream pipeline steps
 
 ---
 
@@ -39,20 +93,29 @@ Notes
 Purpose:
 Stores standardized FASTQ files used directly by pipeline workflows.
 
-Naming Convention:  
+Naming Convention:
 
 ```sh
 <BoxPosition>_R1.fastq.gz
 <BoxPosition>_R2.fastq.gz
 ```
 
-Source:
+**Source:**
 
-- Generated from raw_fastq/ using renaming scripts
-- May include manually recovered or re-downloaded samples
+Files in this directory are generated from:
+```text
+input_data/raw_fastq/
 
-**Important**   
-All pipeline alignment and QC steps operate on this directory.
+using:
+```text
+workflow/00_rename_fastq.sh
+
+**Important**  
+All pipeline QC, alignment, and counting steps operate exclusively on:
+```text
+input_data/processed_fastq/
+
+This directory is the primary input location for the pipeline.
 
 ---
 
@@ -69,13 +132,43 @@ Example:
 
 ### Relationship to Metadata
 
-File naming must match entries in:
-
-```sh
+FASTQ filenames must match entries in:
+```text
 metadata/samples.tsv
-```
 
-Where:
+This file defines mapping between sequencing data and biological samples.
 
-- `BoxPosition` = FASTQ filename prefix
-- Used to map sequencing reads → biological sample → experimental group → timepoint
+---
+
+### Data Flow
+
+Sequencing Facility  
+↓  
+input_data/raw_fastq/ *(immutable archive)*  
+↓  
+workflow/00_rename_fastq.sh  
+↓  
+input_data/processed_fastq/ *(pipeline input)*  
+↓  
+QC → Alignment → Counting → Analysis
+
+---
+### Data Flow
+
+<div align="center">
+
+<span style="font-size: 20px; line-height: 1.8;">
+
+Sequencing Facility  
+↓  
+input_data/raw_fastq/ *(immutable archive)*  
+↓  
+workflow/00_rename_fastq.sh  
+↓  
+input_data/processed_fastq/ *(pipeline input)*  
+↓  
+QC → Alignment → Counting → Analysis  
+
+</span>
+
+</div>
